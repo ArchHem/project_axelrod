@@ -1,26 +1,19 @@
+"""
+Implemetation of iterated prisoner's dilemma game
+
+Bendeguz Szabo, Mate Koszta 
+"""
+
 sample(items, weights) = items[findfirst(cumsum(weights) .> rand())]
-
-
-items = [0, 1]
-weights = [0.2, 0.8]
-summ = 0
-for i in 1:10000
-    global summ
-    summ = summ + sample(items, weights)
-end
-println(summ)
-
-
-
 
 function evaluate_game(p1_defect::Float64,p2_defect::Float64,
     CC::Float64 = 3.0, DD::Float64 = 1.0, 
     CD::Float64 = 5.0, DC::Float64 = 0.0)
 
-    value_table = Array{Float64}([CC CD; DC DD])
+    value_table = Array{Float64}([CC CD;
+                                  DC DD])
 
     #evalute stochacity
-
     p1_probs = Array{Float64}([1-p1_defect, p1_defect])
     p2_probs = Array{Float64}([1-p2_defect, p2_defect])
     indeces = Array{Int64}([1, 2])
@@ -30,54 +23,150 @@ function evaluate_game(p1_defect::Float64,p2_defect::Float64,
 
     #get points
 
-    p1_point = value_table[p1_strat, p2_strat]
-    p2_point = value_table[p2_stratm, p1_strat]
+    p1_point = value_table[p2_strat, p1_strat]
+    p2_point = value_table[p1_strat, p2_strat]
 
-    return [p1_point,p2_point]
+    return [p1_point, p2_point]
 end
 
 
-function play_prisoners_dilemma(player1_strategy, player2_strategy, num_rounds)
-    player1_payoff = 0
-    player2_payoff = 0
-
-    for round in 1:num_rounds
-        # Players make decisions
-        player1_decision = player1_strategy(player1_payoff, player2_payoff)
-        player2_decision = player2_strategy(player2_payoff, player1_payoff)
-
-        # Update payoffs based on decisions
-        player1_payoff += payoff(player1_decision, player2_decision)[1]
-        player2_payoff += payoff(player2_decision, player1_decision)[2]
-    end
-
-    return player1_payoff, player2_payoff
-end
-
-function payoff(decision1, decision2)
-    if decision1 == "cooperate" && decision2 == "cooperate"
-        return (3, 3)  # Both players cooperate, mutual cooperation
-    elseif decision1 == "cooperate" && decision2 == "defect"
-        return (0, 5)  # Player 1 cooperates, player 2 defects
-    elseif decision1 == "defect" && decision2 == "cooperate"
-        return (5, 0)  # Player 1 defects, player 2 cooperates
-    elseif decision1 == "defect" && decision2 == "defect"
-        return (1, 1)  # Both players defect, mutual defection
+# hot encoding: 
+# [1, 0, 0] = cooperated
+# [0, 1, 0] = defected
+# [0, 0, 1] = no games played yet. ==> first move hard coded 
+function Tit4Tat(prev_move::Vector)
+    if prev_move == [0,0,1]
+        return [1,0,0]
+    else
+        return prev_move
     end
 end
 
-# Example of strategies
-function always_cooperate(payoff1, payoff2)
-    return "cooperate"
+function AllDefect(prev_move::Vector)
+    return [0, 1, 0]
 end
 
-function always_defect(payoff1, payoff2)
-    return "defect"
+function AllCooperate(prev_move::Vector)
+    return [1, 0, 0]
 end
 
-# Example: Play the game with two strategies
-num_rounds = 10
-result = play_prisoners_dilemma(always_cooperate, always_defect, num_rounds)
 
-println("Player 1 payoff: ", result[1])
-println("Player 2 payoff: ", result[2])
+function RandomMove(prev_move::Vector)
+
+    moves = [[1, 0, 0], [0, 1, 0]]
+
+    return rand(moves)
+    
+end 
+
+function convert_hot_to_prob(hotvector::Vector{Int64})
+    prob = convert(Float64,hotvector[2])
+    return prob 
+end
+
+
+
+function clash_strategies_shallow_past(strat1,strat2,number_of_steps::Int64 = 100)
+    hot1 = strat1([0,0,1])
+    hot2 = strat2([0,0,1])
+    
+    score = Array{Float64}([0.0,0.0])
+    for i in 1:number_of_steps-1
+        p1 = convert_hot_to_prob(hot1)
+        p2 = convert_hot_to_prob(hot2)
+        rewards = evaluate_game(p1,p2)
+        score += rewards
+        hot1 = strat1(hot2)
+        hot2 = strat2(hot1)
+     
+    end
+    return score
+end
+
+
+
+
+function PastAveragerPositive(past_moves::Vector{Vector{Int64}})
+    
+    average_move = [0, 0, 0]
+
+    for move in past_moves
+        average_move += move
+    end 
+    average_move = average_move / length(past_moves)
+
+    if average_move[3] ≈ 1.0
+        return [1, 0, 0]
+    elseif average_move[1] > average_move[2]
+        return [1, 0, 0]
+    else
+        return [0, 1, 0]
+    end 
+end 
+
+function PastAveragerNegative(past_moves::Vector{Vector{Int64}})
+    
+    average_move = [0, 0, 0]
+
+    for move in past_moves
+        average_move += move
+    end 
+    average_move = average_move / length(past_moves)
+
+    if average_move[3] ≈ 1.0
+        return [0, 1, 0]
+    elseif average_move[1] > average_move[2]
+        return [1, 0, 0]
+    else
+        return [0, 1, 0]
+    end 
+end 
+
+
+function clash_strategies_deep_past(strat1,strat2, number_of_steps::Int64 = 100, N_past1::Int64 = 20, N_past2::Int64 = 20)
+
+    hot1 = [[0,0,1] for i in 1:N_past2+1]
+    hot2 = [[0,0,1] for i in 1:N_past1+1]
+
+    next_hot_1 = strat1(hot2)
+    next_hot_2 = strat2(hot1)
+
+    hot1[N_past2+1] = next_hot_1
+    hot1[N_past1+1] = next_hot_2
+
+    score = Array{Float64}([0.0,0.0])
+
+    for i in 1:number_of_steps-1
+        p1 = convert_hot_to_prob(next_hot_1)
+        p2 = convert_hot_to_prob(next_hot_2)
+        rewards = evaluate_game(p1,p2)
+        score += rewards
+        
+        next_hot_1 = strat1(hot2)
+        next_hot_2 = strat2(hot1)
+
+        for index1 in 1:N_past2
+            hot1[index1] =  hot1[index1+1]         
+        end
+
+        for index2 in 1:N_past1
+            hot1[index2] =  hot2[index2+1]         
+        end
+        
+        hot1[N_past2 + 1] = next_hot_1
+        hot2[N_past1 + 1] = next_hot_2
+
+    end 
+
+    return score
+end  
+ 
+
+
+
+
+println(clash_strategies_deep_past(PastAveragerPositive, PastAveragerNegative))
+
+
+
+
