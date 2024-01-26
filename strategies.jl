@@ -1,4 +1,11 @@
+"""
+Implemetation of iterated prisoner's dilemma game
+
+Bendeguz Szabo, Mate Koszta 
+"""
+
 include("./base_game.jl")
+
 using .base_game
 
 # hot encoding: 
