@@ -1,4 +1,24 @@
+""" Basic Functions for interated Prisoner's Dilemma Game """
+
 function play_prisoners_dilemma(player1_strategy, player2_strategy, num_rounds)
+
+    """
+    Simulates a repeated Prisoner's Dilemma game for a specified number of rounds.
+
+    # Arguments
+    - `player1_strategy::Function`: A function representing Player 1's strategy. The function takes two arguments, the current payoffs of Player 1 and Player 2.
+    - `player2_strategy::Function`: A function representing Player 2's strategy. The function takes two arguments, the current payoffs of Player 2 and Player 1.
+    - `num_rounds::Int`: The number of rounds to simulate the game.
+
+    # Returns
+    - A tuple `(player1_payoff, player2_payoff)` representing the total payoffs for Player 1 and Player 2 after all rounds.
+
+    # Example
+    ```julia
+    result = play_prisoners_dilemma(always_cooperate, always_defect, 10)
+    println("Player 1 payoff: ", result[1])
+    println("Player 2 payoff: ", result[2])
+    """
     player1_payoff = 0
     player2_payoff = 0
 
@@ -37,8 +57,8 @@ function always_defect(payoff1, payoff2)
 end
 
 # Example: Play the game with two strategies
-num_rounds = 10
-result = play_prisoners_dilemma(always_cooperate, always_defect, num_rounds)
+num_rounds = 100
+result = play_prisoners_dilemma(always_defect, always_defect, num_rounds)
 
 println("Player 1 payoff: ", result[1])
 println("Player 2 payoff: ", result[2])
