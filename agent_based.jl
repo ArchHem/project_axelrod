@@ -11,7 +11,7 @@ using Random, SimpleChains, DataStructures
 
 #cooperation is true, defection is false
 
-#TODO: Looki into state_corruption. Better to rewrite as non-mutating func based on true_actions?
+#TODO: Looki into state_corruption. Better to rewrite as non-mutating func based on true_actions?: DONE
 
 abstract type PD_agent end 
 abstract type depth_agent <: PD_agent end
@@ -65,7 +65,7 @@ function state_corruption(state::Bool, p::T) where T<:AbstractFloat
     return output
 end
 
-strategy(agent::TFT, cagent::T) where T<:PD_agent = begin 
+strategy(agent::TFT, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin 
     if length(cagent.actions) >= 1
         @views return cagent.actions[end] ? true : false
     else
@@ -73,9 +73,9 @@ strategy(agent::TFT, cagent::T) where T<:PD_agent = begin
     end
 end
     
-strategy(agent::random_picker, cagent::T) where T<:PD_agent = biased_random(agent.p)
+strategy(agent::random_picker, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = biased_random(agent.p)
 
-strategy(agent::pavlov, cagent::T) where T<:PD_agent = begin 
+strategy(agent::pavlov, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin 
     if length(cagent.actions) >= 1
         @views return is_favourable(agent.true_actions[end],cagent.actions[end])
     else
@@ -90,6 +90,8 @@ function is_favourable(own_action::Bool, enemy_action::Bool)::Bool
     return output
 end
 
+
+#TODO: this may require a multiple dispatch implementation for more advanced agents, i.e. ones that may have a local cache
 function reset_agent!(agent::T) where T<:PD_agent
     agent.actions = Vector{Bool}([])
     agent.true_actions = Vector{Bool}([])
@@ -101,10 +103,10 @@ const axelrod_payout = Dict((true, true) => (3,3),(true, false) => (0,5), (false
 
 function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelrod_payout; N_turns::Integer = 200, p_corrupt::T) where T<:AbstractFloat
     @assert p_corrupt <= one(T)
-    for _ in 1:N_turns
+    for index in 1:N_turns
         #amnesiac agents - past is corrupted every time, in a non-unique manner.
-        action_1 = strategy(agent1,agent2)
-        action_2 = strategy(agent2,agent1)
+        action_1 = strategy(agent1,agent2, index)
+        action_2 = strategy(agent2,agent1, index)
 
         action_tuple = (action_1, action_2)
 
@@ -146,6 +148,7 @@ const p_corruption = 0.2
 score1, score2 = clash_models!(all_defector,titfortat,p_corrupt = p_corruption, N_turns = 100)
 score3, score4 = clash_models!(titfortat,pavlov_agent,p_corrupt = p_corruption, N_turns = 100)
 
+#for p = 0.0
 # we expect the all-defector/TFT matchup to end up with 1 cooperation/defection followed by all-defection: I.e. the defector should have 5 points more, 
 #and the TFT model should have N_turn-1 points. 
 # pavlov and TFT should cooperate till the end
