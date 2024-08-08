@@ -11,6 +11,7 @@ using Random, SimpleChains, DataStructures
 
 #cooperation is true, defection is false
 
+#TODO: Looki into state_corruption. Better to rewrite as non-mutating func based on true_actions?
 
 abstract type PD_agent end 
 abstract type depth_agent <: PD_agent end
@@ -58,15 +59,15 @@ function biased_random(p::T) where T<:AbstractFloat
 end
 
 #p is the chance of corruption
-function state_corruption!(state::Bool, p::T) where T<:AbstractFloat
+function state_corruption(state::Bool, p::T) where T<:AbstractFloat
     control = rand(T)
-    state = p > control ? state : !state
-    return state
+    output = p > control ? state : !state
+    return output
 end
 
 strategy(agent::TFT, cagent::T) where T<:PD_agent = begin 
     if length(cagent.actions) >= 1
-        return cagent.actions[end] ? true : false
+        @views return cagent.actions[end] ? true : false
     else
         return true
     end
@@ -76,7 +77,7 @@ strategy(agent::random_picker, cagent::T) where T<:PD_agent = biased_random(agen
 
 strategy(agent::pavlov, cagent::T) where T<:PD_agent = begin 
     if length(cagent.actions) >= 1
-        return is_favourable(agent.true_actions[end],cagent.actions[end])
+        @views return is_favourable(agent.true_actions[end],cagent.actions[end])
     else
         return true
     end
@@ -118,8 +119,8 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
         push!(agent2.actions,action_2)
         push!(agent2.true_actions,action_2)
 
-        state_corruption!.(agent1.actions, p_corrupt)
-        state_corruption!.(agent2.actions, p_corrupt)
+        agent1.actions .= state_corruption.(agent1.true_actions, p_corrupt)
+        agent2.actions .= state_corruption.(agent2.true_actions, p_corrupt)
     end
 
     #at the end of each state, we extract the scores and wipe the model's memory's
