@@ -7,7 +7,7 @@ all_defector = random_picker(0.0)
 titfortat = TFT()
 pavlov_agent = pavlov()
 
-const p_corruption = 0.1
+const p_corruption = 0.0
 score1, score2 = clash_models!(all_defector,titfortat,p_corrupt = p_corruption, N_turns = 100)
 score3, score4 = clash_models!(titfortat,pavlov_agent,p_corrupt = p_corruption, N_turns = 100)
 
