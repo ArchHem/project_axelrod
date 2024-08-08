@@ -52,6 +52,19 @@ mutable struct pavlov{T}<:simple_agent where {T<:AbstractFloat}
     end
 end
 
+#__________________________________________________________________________________
+
+
+
+
+
+
+
+
+
+
+#__________________________________________________________________________________
+
 function biased_random(p::T) where T<:AbstractFloat
     control = rand(T)
     outp = p > control ? true : false
