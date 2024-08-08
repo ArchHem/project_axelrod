@@ -13,6 +13,8 @@ using Random, SimpleChains, DataStructures
 
 #TODO: Looki into state_corruption. Better to rewrite as non-mutating func based on true_actions?: DONE
 
+#TODO: Check if RNG seed can be fixed
+
 abstract type PD_agent end 
 abstract type depth_agent <: PD_agent end
 abstract type simple_agent <: PD_agent end
