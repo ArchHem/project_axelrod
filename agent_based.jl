@@ -76,13 +76,13 @@ end
 #p is the chance of corruption
 function state_corruption(state::Bool, p::T) where T<:AbstractFloat
     control = rand(T)
-    output = p > control ? state : !state
+    output = p > control ? !state : state
     return output
 end
 
 strategy(agent::TFT, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin 
     if length(cagent.actions) >= 1
-        @views return cagent.actions[end] ? true : false
+        return cagent.actions[end]
     else
         return true
     end
@@ -147,6 +147,8 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
     reset_agent!(agent2)
     return s1, s2
 end
+
+
 
 export TFT, random_picker, pavlov, clash_models!
 end
