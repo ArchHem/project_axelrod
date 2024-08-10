@@ -160,12 +160,16 @@ mutable struct EnsembleRepr{T<:AbstractFloat}
     end
 end
 
-function get_model(X::EnsembleRepr, index<:Integer)
-    lengths = length.(X.model_container)
-    @assert sum(lengths) <= index
+function get_model(X::EnsembleRepr, index::Int)
+    N = length(X.model_container)
+    lengths = length.(X.model_container) 
+    @assert sum(lengths) <= index "Index exceeds maximum index"
     support_indeces = cumsum(lengths)
     index_of_models = searchsortedfirst(support_indeces,index)
-    
+
+    local_vector = @views x.model_container[index_of_models]
+    local_index = 0
+
 
 end
 
