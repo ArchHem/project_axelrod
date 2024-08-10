@@ -148,7 +148,28 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
     return s1, s2
 end
 
+mutable struct EnsembleRepr{T<:AbstractFloat}
+    model_types::Vector{Type{<:PD_agent}}
+    model_container::Vector{Vector{<:PD_agent}}
+
+    #TODO: somehow check if all sub-vectors are of a concrete type! (we dont wanna mix diffent floats for instance!
+    #TODO: make this a bit cleaner, check type stability!
+    function EnsembleRepr(models::Vector{Vector{<:PD_agent}})
+        model_types = [eltype(vect) for vect in models]
+        new{score_type}(model_types,models)
+    end
+end
+
+function get_model(X::EnsembleRepr, index<:Integer)
+    lengths = length.(X.model_container)
+    @assert sum(lengths) <= index
+    support_indeces = cumsum(lengths)
+    index_of_models = searchsortedfirst(support_indeces,index)
+    
+
+end
 
 
-export TFT, random_picker, pavlov, clash_models!
+
+export TFT, random_picker, pavlov, clash_models!, EnsembleRepr
 end
