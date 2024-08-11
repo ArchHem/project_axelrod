@@ -148,32 +148,32 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
     return s1, s2
 end
 
-mutable struct EnsembleRepr{T<:AbstractFloat}
-    model_types::Vector{Type{<:PD_agent}}
-    model_container::Vector{Vector{<:PD_agent}}
+abstract type EnsembleBasis end
 
-    #TODO: somehow check if all sub-vectors are of a concrete type! (we dont wanna mix diffent floats for instance!
-    #TODO: make this a bit cleaner, check type stability!
-    function EnsembleRepr(models::Vector{Vector{<:PD_agent}})
-        model_types = [eltype(vect) for vect in models]
-        new{score_type}(model_types,models)
+function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::AbstractVector{Symbol},T::Type{<:Real})
+    #model_types should be a vector-of-types
+    @assert length(model_types) == length(field_names)
+    N = length(model_types)
+    interm_types = [:($(elem{T})) for elem in model_types]
+
+    println(interm_types)
+    println(typeof(interm_types))
+    
+    fields_interm = [:( $(field_names[i]) ) for i in 1:N]
+
+    fields = [:($(fields_interm[i])::$(interm_types[i])) for i in 1:N]
+    
+    
+    container = quote
+        mutable struct $name <:EnsembleBasis
+            $(fields...)
+        end
     end
-end
-
-function get_model(X::EnsembleRepr, index::Int)
-    N = length(X.model_container)
-    lengths = length.(X.model_container) 
-    @assert sum(lengths) <= index "Index exceeds maximum index"
-    support_indeces = cumsum(lengths)
-    index_of_models = searchsortedfirst(support_indeces,index)
-
-    local_vector = @views x.model_container[index_of_models]
-    local_index = 0
-
-
+    eval(container)
+    return eval(name)
 end
 
 
 
-export TFT, random_picker, pavlov, clash_models!, EnsembleRepr
+export TFT, random_picker, pavlov, clash_models!, EnsembleRepr, EnsembleBuilder
 end

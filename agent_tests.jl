@@ -22,4 +22,11 @@ println(score2)
 println(score3)
 println(score4)
 
+#test ensemble struct 
 
+model_types = [TFT,pavlov]
+field_names = [:TFTs,:Pavlovs]
+struct_name = :TFTvsPavlov
+
+
+examp_builder = EnsembleBuilder(struct_name,model_types,field_names,Float32)
