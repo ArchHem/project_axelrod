@@ -23,10 +23,11 @@ abstract type simple_agent <: PD_agent end
 
 mutable struct TFT{T} <: simple_agent where {T<:AbstractFloat}
     score::T
+    per_score::T
     actions::Vector{Bool}
     true_actions::Vector{Bool}
-    function TFT(T::Type = Float64)
-        new{T}(zero(T),[],[])
+    function TFT(T::Type{<:Real} = Float64)
+        new{T}(zero(T),zero(T),[],[])
 
     end
 end
@@ -34,6 +35,7 @@ end
 #p chance of coopeartion
 mutable struct random_picker{T}<:simple_agent where {T<:AbstractFloat}
     score::T
+    per_score::T
     actions::Vector{Bool}
     true_actions::Vector{Bool}   
     p::T
@@ -41,16 +43,17 @@ end
 
 #p denotes the probability of cooperation
 function random_picker(p::T) where {T<:AbstractFloat}
-    random_picker{T}(zero(T),[],[],p)
+    random_picker{T}(zero(T),zero(T),[],[],p)
 end
 
 #pavlov
 mutable struct pavlov{T}<:simple_agent where {T<:AbstractFloat}
     score::T
+    per_score::T
     actions::Vector{Bool}
     true_actions::Vector{Bool}
     function pavlov(T::Type = Float64)
-        new{T}(zero(T),[],[])
+        new{T}(zero(T),zero(T),[],[])
     end
 end
 
@@ -155,6 +158,9 @@ function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::A
     @assert length(model_types) == length(field_names)
     N = length(model_types)
     interm_types = [:($(elem{T})) for elem in model_types]
+    interm_types = [:(Vector{$(elem)}) for elem in interm_types]
+
+    println()
 
     println(interm_types)
     println(typeof(interm_types))
@@ -172,6 +178,8 @@ function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::A
     eval(container)
     return eval(name)
 end
+
+
 
 
 

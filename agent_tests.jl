@@ -29,4 +29,9 @@ field_names = [:TFTs,:Pavlovs]
 struct_name = :TFTvsPavlov
 
 
-examp_builder = EnsembleBuilder(struct_name,model_types,field_names,Float32)
+examp_builder = EnsembleBuilder(struct_name,model_types,field_names,Float64)
+
+
+TFT_vec = [TFT() for i in 1:5]
+pav_vec = [pavlov() for i in 1:5]
+test_ensemble = examp_builder(TFT_vec,pav_vec)
