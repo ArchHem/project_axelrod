@@ -133,6 +133,9 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
         agent1.score += point1
         agent2.score += point2 
 
+        agent1.per_score += point1
+        agent2.per_score += point2 
+
         push!(agent1.actions,action_1)
         push!(agent1.true_actions,action_1)
 
@@ -151,7 +154,7 @@ function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelro
     return s1, s2
 end
 
-abstract type EnsembleBasis end
+abstract type AbstractEnsemble end
 
 function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::AbstractVector{Symbol},T::Type{<:Real})
     #model_types should be a vector-of-types
@@ -160,18 +163,13 @@ function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::A
     interm_types = [:($(elem{T})) for elem in model_types]
     interm_types = [:(Vector{$(elem)}) for elem in interm_types]
 
-    println()
-
-    println(interm_types)
-    println(typeof(interm_types))
-    
     fields_interm = [:( $(field_names[i]) ) for i in 1:N]
 
     fields = [:($(fields_interm[i])::$(interm_types[i])) for i in 1:N]
     
     
     container = quote
-        mutable struct $name <:EnsembleBasis
+        mutable struct $name <:AbstractEnsemble 
             $(fields...)
         end
     end
@@ -179,9 +177,32 @@ function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::A
     return eval(name)
 end
 
+#might be better in returning vector-of-vectors
+function get_pers_scores(ensemble::AbstractEnsemble,T::Type{<:Real})
+    fields = fieldnames(typeof(ensemble))
+    score_vector = Vector{Vector{T}}([])
+
+    for field in fields
+        local_models = getfield(ensemble,field)
+        local_scores = getfield.(local_models,:per_score)
+        append!(score_vector,local_scores)
+    end
+    return score_vector
+end
+
+function delete_worst_performers(ensemble::AbstractEnsemble,min_score::Type{<:Real})
+    #deletes each model from the ensemble that does not have the specified minimum score
+end
+
+
+
+function populate_model(ensemble::AbstractEnsemble)
+
+end
 
 
 
 
-export TFT, random_picker, pavlov, clash_models!, EnsembleRepr, EnsembleBuilder
+
+export TFT, random_picker, pavlov, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores
 end
