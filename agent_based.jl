@@ -11,9 +11,30 @@ using Random, SimpleChains, DataStructures, StatsBase
 
 #cooperation is true, defection is false
 
-#TODO: Looki into state_corruption. Better to rewrite as non-mutating func based on true_actions?: DONE
+#TODO: Check if RNG seed can be fixed globally
 
-#TODO: Check if RNG seed can be fixed
+#READ ME BEFORE CONTRIBUTING:
+
+#ALL agents must have:
+
+#=fields of: 
+score: The score achieved in the current game
+pers_score (persistent score): used for model culling in ensemble simulations
+actions (action history, as perceived by others, i.e. already 'corrupted'), 
+true_actions: the true actions taken by the agent
+
+A parametric type T which denotes the type of float they use for the score under the hood: type of the concrete type syntax, eg TFT{Float64}
+
+GOOD TO HAVE: a sensible constructor function, esp. with regards the parametric type mentioned above.
+=#
+
+#=
+specialized dispatch of the strategy(agent,cagent (as in counter-agent), index) function. 
+
+By STANDARD the strategy functions may access: the actions of both agents and the index of iteration: 
+they may not access any other 'meta' information or even the model's own scores.
+ For pavlovian agents, we always implicutly assume that DC > CC >> DD in terms of payout. 
+=#
 
 abstract type PD_agent end 
 abstract type depth_agent <: PD_agent end
@@ -120,6 +141,17 @@ end
 const axelrod_payout = Dict((true, true) => (3,3),(true, false) => (0,5), (false, true) => (5,0), (false, false)=>(1,1))
 
 function clash_models!(agent1::PD_agent, agent2::PD_agent, payout::Dict = axelrod_payout; N_turns::Integer = 200, p_corrupt::T) where T<:AbstractFloat
+    #=
+    This function has inputs:
+        agent1:: The first agent, which has associated dispatch of 'strategy'
+        agent2:: The second agent, which has associated dispatch of 'strategy'. 
+            For type stability, the two agents should have the same internal real-number represenation of scores
+        payout:: Dictionary that maps the boolean tuples (true, false), (false, true), (false, false), (true, true) to some FLOAT tuples
+        N_turns:: Number of turns played, before the agents are 'reset'
+        p_corrupt:: chance of a random action in true_history being flipped to the opposite, as stored in actions
+            
+            This function will 'reset' or wipe the memory of the agents at the end of it, but keeps their persistent scores
+    =#
     @assert p_corrupt <= one(T)
     for index in 1:N_turns
         #amnesiac agents - past is corrupted every time, in a non-unique manner.
@@ -157,6 +189,15 @@ end
 abstract type AbstractEnsemble end
 
 function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::AbstractVector{Symbol},T::Type{<:Real})
+    #=
+    This function creates a storing struct dynamically, as specified by the inputs.
+        name:: Symbol, will put the 'name' into the local namespace as a constructor: otherwise, 
+        the function itself returns the constructor which might be bound to another name but will gnereate structs of this name.
+        model_types:: A vector filled with NON _concrete_ agent types: their concrete type is determined via the Type T
+        field_names:: Name of the fields dynamically generated, vector of Symbolss
+        T:: Concrete float representation of internal points, type, eg Float64, NOT an instance
+    =#
+
     #model_types should be a vector-of-types
     @assert length(model_types) == length(field_names)
     N = length(model_types)
@@ -180,6 +221,10 @@ end
 
 #might be better in returning vector-of-vectors
 function get_pers_scores(ensemble::AbstractEnsemble,T::Type{<:Real})
+    #=This function gets the 'persistent score' of each model in the ensemble: 
+    the function is dynamic and should operate on all instnces of abstractensembles defined via the above dynamic generator
+        T::Type of internal float repr. of scores. TODO: can be infered in theory via some other dynamic approach
+    =#
     fields = fieldnames(typeof(ensemble))
     score_vector = Vector{Vector{T}}([])
 
@@ -192,7 +237,9 @@ function get_pers_scores(ensemble::AbstractEnsemble,T::Type{<:Real})
 end
 
 function delete_worst_performers!(ensemble::AbstractEnsemble,min_score::T) where T<:Real
-    #deletes each model from the ensemble that does not have the specified minimum score
+    #=
+    This function deteles all models dynamically from the ensemble that do not have some minimum score min_score.
+    =#
     fields = fieldnames(typeof(ensemble))
     
     #look into ways to do this in-place instead of this monstrosity!
@@ -238,7 +285,7 @@ function r_repopulate_model!(ensemble::AbstractEnsemble,N_new_models::T) where T
 end
 
 function ensemble_shape(ensenble::AbstractEnsemble)
-    
+    #returns a vector ints that stores which field has how many elements
     fields = fieldnames(typeof(ensenble))
     shape = @views [length(getfield(ensenble,field)) for field in fields]
     return shape
@@ -246,6 +293,10 @@ function ensemble_shape(ensenble::AbstractEnsemble)
 end
 
 function to_shape(index::T, shape::Vector{T}) where T<:Integer
+    #=given an index of a model, this function will output the 
+    prim_index:: index of the field
+    secondary_index:: Index of the model inside the field specified by primary_index
+    =#
     csummed = cumsum(shape)
     @assert csummed[end] >= index
     prim_index = searchsortedfirst(csummed,index)
@@ -254,6 +305,7 @@ function to_shape(index::T, shape::Vector{T}) where T<:Integer
 end
 
 function NumberOfAgents(ensemble::AbstractEnsemble)
+    #returns the current number of agents inside an ensemble
     vec = ensemble_shape(ensemble)
 
     number_of_models = sum(vec)
@@ -263,7 +315,7 @@ end
 
 #implement varitions of this func
 function ensemble_round!(ensemble::AbstractEnsemble,T::Type{Z},N_turns::Z,payout::Dict,p_corrupt::AbstractFloat) where Z<:Integer
-    #TODO: review
+    #TODO: review, add docstring
     N = NumberOfAgents(ensemble)
 
     @assert iseven(N)
@@ -305,7 +357,14 @@ end
 function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z = 0.05, payout::Dict, p_corrupt::R, support_type::Type{<:Real}) where {T<:Integer, Z<:Real, R<:AbstractFloat}
 
     for i in 1:N_iters
-        
+        is_multiple = i % cull_freq == 0
+
+        if is_multiple
+            scores = get_pers_scores(ensemble,support_type)
+            scores = vcat()
+
+        end
+
 
 
     end
