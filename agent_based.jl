@@ -1,6 +1,6 @@
 
 module AxelRod
-using Random, SimpleChains, DataStructures, StatsBase
+using Random, SimpleChains, DataStructures, StatsBase, ProgressBars
 
 #all agents have perfect memory of their own actions, but not those of others: I.e. Pavlov will always correctly recall its actions
 
@@ -12,6 +12,8 @@ using Random, SimpleChains, DataStructures, StatsBase
 #cooperation is true, defection is false
 
 #TODO: Check if RNG seed can be fixed globally
+
+#TODO: Theoretically, the 
 
 #READ ME BEFORE CONTRIBUTING:
 
@@ -354,11 +356,11 @@ function ensemble_round!(ensemble::AbstractEnsemble,T::Type{Z},N_turns::Z,payout
     return ensemble
 end
 
-function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z = 0.05, payout::Dict, p_corrupt::R, support_type::Type{<:Real}) where {T<:Integer, Z<:Real, R<:AbstractFloat}
+function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z, payout::Dict, p_corrupt::Z, support_type::Type{<:Real}) where {T<:Integer, Z<:AbstractFloat}
 
-    for i in 1:N_iters
+    for i in ProgressBar(1:N_iters)
         is_multiple = i % cull_freq == 0
-        ensemble_round!(ensemble,support_type,N_turns,payout,p_corrupt)
+        ensemble_round!(ensemble,Int64,N_turns,payout,p_corrupt)
 
         if is_multiple
             N_old = NumberOfAgents(ensemble)

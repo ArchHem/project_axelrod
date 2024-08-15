@@ -41,16 +41,15 @@ test_ensemble2 = examp_builder(copy(TFT_vec),copy(pav_vec))
 s1 = get_pers_scores(test_ensemble,Float64)
 delete_worst_performers!(test_ensemble,1.0)
 #should delete all models..
-println(test_ensemble)
 
 
 #should add on average equal amounts of models
 
 r_repopulate_model!(test_ensemble2,10)
-s2 = get_pers_scores(test_ensemble2,Float64)
-println(ensemble_shape(test_ensemble2))
 
-ensemble_round!(test_ensemble2,Int64,200,axelrod_payout,0.05)
+println(get_pers_scores(test_ensemble2,Float64))
+StandardRun!(test_ensemble2,50,200,10,0.05,axelrod_payout,0.05,Float64)
 s2 = get_pers_scores(test_ensemble2,Float64)
+println(s2)
 
 
