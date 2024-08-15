@@ -358,15 +358,22 @@ function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq
 
     for i in 1:N_iters
         is_multiple = i % cull_freq == 0
+        ensemble_round!(ensemble,support_type,N_turns,payout,p_corrupt)
 
         if is_multiple
+            N_old = NumberOfAgents(ensemble)
             scores = get_pers_scores(ensemble,support_type)
-            scores = vcat()
-
+            scores = vcat(scores...)
+            #get lowesr to_cull percentag
+            #is this type stable?
+            cutoff = Int64(N_old*to_cull)
+            sort!(scores)
+            min_score_local = scores[cutoff]
+            delete_worst_performers!(ensemble,min_score_local)
+            N_new = NumberOfAgents(ensemble)
+            to_create = N_old - N_new
+            r_repopulate_model!(ensemble,to_create)
         end
-
-
-
     end
     return ensemble
 end
