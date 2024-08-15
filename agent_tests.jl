@@ -34,8 +34,23 @@ examp_builder = EnsembleBuilder(struct_name,model_types,field_names,Float64)
 
 TFT_vec = [TFT() for i in 1:5]
 pav_vec = [pavlov() for i in 1:5]
-test_ensemble = examp_builder(TFT_vec,pav_vec)
+#always use cplict copies!!!!
+test_ensemble = examp_builder(copy(TFT_vec),copy(pav_vec))
+test_ensemble2 = examp_builder(copy(TFT_vec),copy(pav_vec))
 
 s1 = get_pers_scores(test_ensemble,Float64)
+delete_worst_performers!(test_ensemble,1.0)
+#should delete all models..
+println(test_ensemble)
+
+
+#should add on average equal amounts of models
+
+r_repopulate_model!(test_ensemble2,10)
+s2 = get_pers_scores(test_ensemble2,Float64)
+println(ensemble_shape(test_ensemble2))
+
+ensemble_round!(test_ensemble2,Int64,200,axelrod_payout,0.05)
+s2 = get_pers_scores(test_ensemble2,Float64)
 
 

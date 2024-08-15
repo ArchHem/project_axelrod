@@ -1,6 +1,6 @@
 
 module AxelRod
-using Random, SimpleChains, DataStructures
+using Random, SimpleChains, DataStructures, StatsBase
 
 #all agents have perfect memory of their own actions, but not those of others: I.e. Pavlov will always correctly recall its actions
 
@@ -174,6 +174,7 @@ function EnsembleBuilder(name::Symbol,model_types::AbstractVector,field_names::A
         end
     end
     eval(container)
+
     return eval(name)
 end
 
@@ -185,24 +186,134 @@ function get_pers_scores(ensemble::AbstractEnsemble,T::Type{<:Real})
     for field in fields
         local_models = getfield(ensemble,field)
         local_scores = getfield.(local_models,:per_score)
-        append!(score_vector,local_scores)
+        push!(score_vector,local_scores)
     end
     return score_vector
 end
 
-function delete_worst_performers(ensemble::AbstractEnsemble,min_score::Type{<:Real})
+function delete_worst_performers!(ensemble::AbstractEnsemble,min_score::T) where T<:Real
     #deletes each model from the ensemble that does not have the specified minimum score
+    fields = fieldnames(typeof(ensemble))
+    
+    #look into ways to do this in-place instead of this monstrosity!
+    for field in fields
+        #THIS ALLOCATES LOOK INTO FIXES
+        local_models = getfield(ensemble,field)
+        local_scores = getfield.(local_models,:per_score)
+        bool_mask = local_scores .< min_score
+        deleteat!(local_models,findall(bool_mask))
+        setfield!(ensemble,field,local_models)
+    end
+    return ensemble
 end
 
 
 
-function populate_model(ensemble::AbstractEnsemble)
+function r_repopulate_model!(ensemble::AbstractEnsemble,N_new_models::T) where T<:Integer
+    #this works by taking a random, non deleted model, and duplicating it, adding it back into the ensemble
+    #first we iterature thru the struct fields, to see how likely is a new model to belong to either field-vector
+    #i.e. first we sample the fields with probability prop. to length(field...) then select a random model within that field, and duplicate it
+    fields = fieldnames(typeof(ensemble))
+    field_vals = @views [getfield(ensemble,field) for field in fields]
 
+    field_lengths = [length(val) for val in field_vals]
+    field_ids = collect(1:length(fields))
+
+    number_of_models = sum(field_lengths)
+
+    probs = field_lengths/number_of_models
+
+    chosen = wsample(field_ids,probs,N_new_models,replace=true)
+
+    for c in chosen
+        push!(field_vals[c],sample(field_vals[c]))
+    end
+
+    for (i, field) in enumerate(fields)
+        setfield!(ensemble,field,field_vals[i])
+    end
+
+    return ensemble
+
+end
+
+function ensemble_shape(ensenble::AbstractEnsemble)
+    
+    fields = fieldnames(typeof(ensenble))
+    shape = @views [length(getfield(ensenble,field)) for field in fields]
+    return shape
+
+end
+
+function to_shape(index::T, shape::Vector{T}) where T<:Integer
+    csummed = cumsum(shape)
+    @assert csummed[end] >= index
+    prim_index = searchsortedfirst(csummed,index)
+    secondary_index = prim_index == 1 ? index : index - csummed[prim_index-1]
+    return (prim_index, secondary_index)
+end
+
+function NumberOfAgents(ensemble::AbstractEnsemble)
+    vec = ensemble_shape(ensemble)
+
+    number_of_models = sum(vec)
+
+    return number_of_models
+end
+
+#implement varitions of this func
+function ensemble_round!(ensemble::AbstractEnsemble,T::Type{Z},N_turns::Z,payout::Dict,p_corrupt::AbstractFloat) where Z<:Integer
+    #TODO: review
+    N = NumberOfAgents(ensemble)
+
+    @assert iseven(N)
+
+    shape = ensemble_shape(ensemble)
+    
+    indeces = collect(1:N)
+
+    shuffle!(indeces)
+
+    fields = fieldnames(typeof(ensemble))
+    
+    vert = T(N/2)
+    random_index_pairs = reshape(indeces,(2,vert))
+
+    model_indeces = to_shape.(random_index_pairs,Ref(shape))
+
+    for j in 1:vert
+        #allocates!!!
+        prim1, sec1 = @views model_indeces[1,j]
+        prim2, sec2 = @views model_indeces[2,j]
+
+        models1 = getfield(ensemble,fields[prim1])
+        models2 = getfield(ensemble,fields[prim2])
+
+        model1 = @views models1[sec1]
+        model2 = @views models2[sec2]
+
+        clash_models!(model1, model2, payout; N_turns = N_turns, p_corrupt = p_corrupt)
+
+        setfield!(ensemble,fields[prim1],models1)
+        setfield!(ensemble,fields[prim2],models2)
+
+    end
+
+    return ensemble
+end
+
+function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z = 0.05, payout::Dict, p_corrupt::R, support_type::Type{<:Real}) where {T<:Integer, Z<:Real, R<:AbstractFloat}
+
+    for i in 1:N_iters
+        
+
+
+    end
+    return ensemble
 end
 
 
 
-
-
-export TFT, random_picker, pavlov, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores
+export TFT, random_picker, pavlov, axelrod_payout, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores, delete_worst_performers!, r_repopulate_model!
+export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape
 end
