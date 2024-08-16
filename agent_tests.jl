@@ -60,10 +60,10 @@ plot_builder = EnsembleBuilder(:TFTvsAD,[TFT,random_picker],[:TFT,:AD],Float64)
 const N_init = 500
 const p_corr = 0.05
 const dtype = Float64
-const cull_freq = 2
+const cull_freq = 5
 const rounds = 50
-const reruns = 2500
-const cull_amount = 0.02
+const reruns = 5000
+const cull_amount = 0.05
 
 
 const TFTs = [TFT() for i in 1:N_init]
