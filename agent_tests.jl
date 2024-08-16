@@ -1,6 +1,6 @@
 include("./agent_based.jl")
 
-using Random, .AxelRod
+using Random, .AxelRod, Plots
 
 
 all_defector = random_picker(0.0)
@@ -47,9 +47,55 @@ delete_worst_performers!(test_ensemble,1.0)
 
 r_repopulate_model!(test_ensemble2,10)
 
-println(get_pers_scores(test_ensemble2,Float64))
+
 StandardRun!(test_ensemble2,50,200,10,0.05,axelrod_payout,0.05,Float64)
 s2 = get_pers_scores(test_ensemble2,Float64)
-println(s2)
 
+
+#first 'proper' use case
+
+
+plot_builder = EnsembleBuilder(:TFTvsAD,[TFT,random_picker],[:TFT,:AD],Float64)
+
+const N_init = 500
+const p_corr = 0.05
+const dtype = Float64
+const cull_freq = 2
+const rounds = 50
+const reruns = 2500
+const cull_amount = 0.02
+
+
+const TFTs = [TFT() for i in 1:N_init]
+const ADs = [random_picker(0.0) for i in 1:N_init]
+
+const N_p = 5
+const pvec = LinRange(0.0,0.5,N_p)
+const histories = Vector{Matrix{Float64}}([])
+
+for p in pvec
+    model = plot_builder(copy(TFTs),copy(ADs))
+
+    shape_history = StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,p_corr,dtype)
+    push!(histories,shape_history)
+end
+
+function colorer1(index::T, N_max::T) where T<:Integer
+    return RGB(0.2,index/N_max,1-index/N_max)
+end
+
+function colorer2(index::T, N_max::T) where T<:Integer
+    return RGB(index/N_max,1-index/N_max, 0.2)
+end
+const fontsiz = 5
+x = @views plot(histories[1][1,:], label = "Number of TFT agents for p = $(pvec[1])", xlabel = "Iteration of 'culling'", ylabel = "Number of Agents",
+color = colorer1(1,N_p), title = "1000 Agent sim", dpi = 1500, legendfontsize = fontsiz)
+@views plot!(x,histories[1][2,:], label = "Number of AD agents for p = $(pvec[1])", color = colorer2(1,N_p), legendfontsize = fontsiz)
+
+for i in 2:N_p
+    @views plot!(x,histories[i][1,:], label = "Number of TFT agents for p = $(round(pvec[i],digits = 2))", color = colorer1(i,N_p), legendfontsize = fontsiz)
+    @views plot!(x,histories[i][2,:], label = "Number of AD agents for p = $(round(pvec[i],digits = 2))", color = colorer2(i,N_p), legendfontsize = fontsiz)
+end
+
+display(x)
 

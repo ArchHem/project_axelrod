@@ -358,6 +358,10 @@ end
 
 function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z, payout::Dict, p_corrupt::Z, support_type::Type{<:Real}) where {T<:Integer, Z<:AbstractFloat}
 
+    #this function also has the 'convinince' function of returning the history of the shape of the array.
+
+    shapos = Vector{Vector{Int64}}([ensemble_shape(ensemble)])
+
     for i in ProgressBar(1:N_iters)
         is_multiple = i % cull_freq == 0
         ensemble_round!(ensemble,Int64,N_turns,payout,p_corrupt)
@@ -375,9 +379,12 @@ function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq
             N_new = NumberOfAgents(ensemble)
             to_create = N_old - N_new
             r_repopulate_model!(ensemble,to_create)
+            push!(shapos, ensemble_shape(ensemble))
         end
+
+
     end
-    return ensemble
+    return hcat(shapos...)
 end
 
 
