@@ -76,16 +76,16 @@ const histories = Vector{Matrix{Float64}}([])
 for p in pvec
     model = plot_builder(copy(TFTs),copy(ADs))
 
-    shape_history = StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,p_corr,dtype)
+    shape_history = StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,p,dtype)
     push!(histories,shape_history)
 end
 
 function colorer1(index::T, N_max::T) where T<:Integer
-    return RGB(0.2,index/N_max,1-index/N_max)
+    return RGB(0.2,index/N_max,1.0)
 end
 
 function colorer2(index::T, N_max::T) where T<:Integer
-    return RGB(index/N_max,1-index/N_max, 0.2)
+    return RGB(index/N_max,1.0, 0.2)
 end
 const fontsiz = 5
 x = @views plot(histories[1][1,:], label = "Number of TFT agents for p = $(pvec[1])", xlabel = "Iteration of 'culling'", ylabel = "Number of Agents",
