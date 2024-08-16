@@ -35,8 +35,8 @@ examp_builder = EnsembleBuilder(struct_name,model_types,field_names,Float64)
 TFT_vec = [TFT() for i in 1:5]
 pav_vec = [pavlov() for i in 1:5]
 #always use cplict copies!!!!
-test_ensemble = examp_builder(copy(TFT_vec),copy(pav_vec))
-test_ensemble2 = examp_builder(copy(TFT_vec),copy(pav_vec))
+test_ensemble = examp_builder(deepcopy(TFT_vec),deepcopy(pav_vec))
+test_ensemble2 = examp_builder(deepcopy(TFT_vec),deepcopy(pav_vec))
 
 s1 = get_pers_scores(test_ensemble,Float64)
 delete_worst_performers!(test_ensemble,1.0)
@@ -58,11 +58,10 @@ s2 = get_pers_scores(test_ensemble2,Float64)
 plot_builder = EnsembleBuilder(:TFTvsAD,[TFT,random_picker],[:TFT,:AD],Float64)
 
 const N_init = 500
-const p_corr = 0.05
 const dtype = Float64
 const cull_freq = 5
 const rounds = 50
-const reruns = 5000
+const reruns = 200
 const cull_amount = 0.05
 
 
@@ -74,7 +73,8 @@ const pvec = LinRange(0.0,0.5,N_p)
 const histories = Vector{Matrix{Float64}}([])
 
 for p in pvec
-    model = plot_builder(copy(TFTs),copy(ADs))
+    model = plot_builder(deepcopy(TFTs),deepcopy(ADs))
+    
 
     shape_history = StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,p,dtype)
     push!(histories,shape_history)
@@ -90,11 +90,11 @@ end
 const fontsiz = 5
 x = @views plot(histories[1][1,:], label = "Number of TFT agents for p = $(pvec[1])", xlabel = "Iteration of 'culling'", ylabel = "Number of Agents",
 color = colorer1(1,N_p), title = "1000 Agent sim", dpi = 1500, legendfontsize = fontsiz)
-@views plot!(x,histories[1][2,:], label = "Number of AD agents for p = $(pvec[1])", color = colorer2(1,N_p), legendfontsize = fontsiz)
+#@views plot!(x,histories[1][2,:], label = "Number of AD agents for p = $(pvec[1])", color = colorer2(1,N_p), legendfontsize = fontsiz)
 
 for i in 2:N_p
     @views plot!(x,histories[i][1,:], label = "Number of TFT agents for p = $(round(pvec[i],digits = 2))", color = colorer1(i,N_p), legendfontsize = fontsiz)
-    @views plot!(x,histories[i][2,:], label = "Number of AD agents for p = $(round(pvec[i],digits = 2))", color = colorer2(i,N_p), legendfontsize = fontsiz)
+    #@views plot!(x,histories[i][2,:], label = "Number of AD agents for p = $(round(pvec[i],digits = 2))", color = colorer2(i,N_p), legendfontsize = fontsiz)
 end
 
 display(x)

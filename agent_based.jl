@@ -13,7 +13,11 @@ using Random, SimpleChains, DataStructures, StatsBase, ProgressBars
 
 #TODO: Check if RNG seed can be fixed globally
 
-#TODO: Theoretically, the 
+#TODO: Theoretically, the support_type used by many internal functions can be infered from the dynamically generated structs. Implement!
+
+#TODO: Re-check if teh current method of copy-decoupling is good enough! There may yet be some coupled operations. 
+
+#TODO: Check type stability of internal functions
 
 #READ ME BEFORE CONTRIBUTING:
 
@@ -275,7 +279,8 @@ function r_repopulate_model!(ensemble::AbstractEnsemble,N_new_models::T) where T
     chosen = wsample(field_ids,probs,N_new_models,replace=true)
 
     for c in chosen
-        push!(field_vals[c],sample(field_vals[c]))
+        #performance bloat... maybe implement copy for all agents?
+        push!(field_vals[c],deepcopy(sample(field_vals[c])))
     end
 
     for (i, field) in enumerate(fields)
@@ -370,6 +375,7 @@ function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq
             N_old = NumberOfAgents(ensemble)
             scores = get_pers_scores(ensemble,support_type)
             scores = vcat(scores...)
+            
             #get lowesr to_cull percentag
             #is this type stable?
             cutoff = Int64(N_old*to_cull)
