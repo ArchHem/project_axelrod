@@ -55,25 +55,28 @@ s2 = get_pers_scores(test_ensemble2,Float64)
 #first 'proper' use case
 
 
-plot_builder = EnsembleBuilder(:TFTvsAD,[TFT,random_picker],[:TFT,:AD],Float64)
+plot_builder = EnsembleBuilder(:TFTvsPavloc,[TFT,pavlov],[:TFT,:pavlov],Float64)
 
-const N_init = 500
+const N_init_TFT = 500
+const N_init_AD = 500
+const N_init_pavlov = 500
 const dtype = Float64
 const cull_freq = 5
 const rounds = 50
-const reruns = 200
+const reruns = 6000
 const cull_amount = 0.05
 
 
-const TFTs = [TFT() for i in 1:N_init]
-const ADs = [random_picker(0.0) for i in 1:N_init]
+const TFTs = [TFT() for i in 1:N_init_TFT]
+const ADs = [random_picker(0.0) for i in 1:N_init_AD]
+const pavlovs = [pavlov() for i  in 1:N_init_pavlov]
 
-const N_p = 5
+const N_p = 10
 const pvec = LinRange(0.0,0.5,N_p)
 const histories = Vector{Matrix{Float64}}([])
 
 for p in pvec
-    model = plot_builder(deepcopy(TFTs),deepcopy(ADs))
+    model = plot_builder(deepcopy(TFTs),deepcopy(pavlovs))
     
 
     shape_history = StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,p,dtype)
