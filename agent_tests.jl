@@ -63,7 +63,7 @@ const N_init_pavlov = 500
 const dtype = Float64
 const cull_freq = 5
 const rounds = 50
-const reruns = 6000
+const reruns = 10000
 const cull_amount = 0.05
 
 
