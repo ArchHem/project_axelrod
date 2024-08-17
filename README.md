@@ -19,11 +19,13 @@ All agents have an associated strategy: such a strategy is a function of their o
 
 An agent itself describes all auxillary parameters that its strategy might entail: an example is a stochastic agent with parameter 0<_q_<1 that will cooperate with probability _q_, regardless of enemy action. Agents may be arbiteraly complex, but they may not _directly_ remember enemy, perceived actions between iterations: they however may use auxillary parameters generated from 'snapshots' of enemy actions. An example would be an agent that tries to estimate the enemy agent's cooperation probability. 
 
+### Update Rules and Ensemble evolutions
+
 ### 1-depth strategies
 
 1-depth strategies refer to strategis that may only access the most recent enemy actions. An example would be the tit-for-that agent (TFT), the Pavlov agent (cooperates if the previous action with the enemy was favourable, i.e. defection-cooperation or cooperation-cooperation) and a generalized stochastic agent (cooperates with probability q: two special cases are the All-defector and All-Cooperator agents). 
 
-Example result: 
+Example result of all-defector vs TFT agents ensemble run, starting with a population ratio of 1-to-1, as a function of corruption probability:
 
 ![TFTvsAD](https://github.com/ArchHem/project_axelrod/blob/main/examp_plot.png)
 
