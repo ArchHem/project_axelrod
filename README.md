@@ -13,6 +13,12 @@ The project aims to examine how ensemble simulations evolve as a function of $p$
 
 TBA: reward matrix, usage of markov process for estimation, etc.
 
+## Evolution types
+
+### Permitting extinction
+
+### Not permitting total extinction
+
 ### Agents and Strategies
 
 All agents have an associated strategy: such a strategy is a function of their own actions (which they always remember and can access perfectly), the _perceived_ action of the enemy agent (in which each action is reversed by some probability _p_ at _every iteration_, which we call as the corruption/noise level) and the current index of the game. We emphasize that this means that an agent _may not retain a consistent history of perceived, enemy actions_. 
