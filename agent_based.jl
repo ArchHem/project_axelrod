@@ -1,6 +1,6 @@
 
 module AxelRod
-using Random, SimpleChains, DataStructures, StatsBase, ProgressBars
+using Random, DataStructures, StatsBase, ProgressBars, Base.Threads
 
 #all agents have perfect memory of their own actions, but not those of others: I.e. Pavlov will always correctly recall its actions
 
@@ -141,6 +141,14 @@ function reset_agent!(agent::T) where T<:PD_agent
     agent.actions = Vector{Bool}([])
     agent.true_actions = Vector{Bool}([])
     agent.score = zero(agent.score)
+    return agent
+end
+
+function total_reset_agent!(agent::T) where T<:PD_agent
+    agent.actions = Vector{Bool}([])
+    agent.true_actions = Vector{Bool}([])
+    agent.score = zero(agent.score)
+    agent.per_score = zero(agent.per_score)
     return agent
 end
 
@@ -394,7 +402,38 @@ function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq
 end
 
 
+function ensemble_resetter!(x)
+    lfields = fieldnames(typeof(x))
+    fieldvals = [getfield(x,elem) for elem in lfields]
+    #now we have an array of vectors of agents...
+    
+    fieldvals = broadcast(f -> total_reset_agent!.(f), fieldvals)
+    
+    for (f, v) in zip(lfields,fieldvals)
+        setfield!(x,f,v)
+    end
+end
+
+macro MC_mean!(N_runs, expression, model)
+    #model should be also inside the expression...
+    quote
+        res0 = $expression
+        dimensions = size(res0)
+        T = eltype(res0)
+        storage = Array{T}(undef,(N_runs, dimensions[1], dimensions[2]))
+        storage[1,:,:] = res0
+        ensemble_resetter!(model)
+
+        Threads.@threads for i in 2:N_runs
+            storage[i,:,:] = $expression
+            ensemble_resetter!(model)
+        end
+        means = mean(storage,dims = 1)
+        return means
+    end
+end
+
 
 export TFT, random_picker, pavlov, axelrod_payout, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores, delete_worst_performers!, r_repopulate_model!
-export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape
+export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape, ensemble_resetter!, MC_mean!
 end
