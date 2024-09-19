@@ -1,6 +1,6 @@
 
 module AxelRod
-using Random, DataStructures, StatsBase, ProgressBars, Base.Threads
+using Random, DataStructures, StatsBase, ProgressBars, Statistics
 
 #all agents have perfect memory of their own actions, but not those of others: I.e. Pavlov will always correctly recall its actions
 
@@ -46,6 +46,21 @@ abstract type PD_agent end
 abstract type depth_agent <: PD_agent end
 abstract type simple_agent <: PD_agent end
 
+
+
+function biased_random(p::T) where {T<:AbstractFloat}
+    control = rand(T)
+    outp = p > control ? true : false
+    return outp
+end
+
+#p is the chance of corruption
+function state_corruption(state::Bool, p::T) where {T<:AbstractFloat}
+    control = rand(T)
+    output = p > control ? !state : state
+    return output
+end
+
 #examples
 
 mutable struct TFT{T} <: simple_agent where {T<:AbstractFloat}
@@ -84,31 +99,38 @@ mutable struct pavlov{T}<:simple_agent where {T<:AbstractFloat}
     end
 end
 
-#__________________________________________________________________________________
-
-
-
-
-
-
-
-
-
-
-#__________________________________________________________________________________
-
-function biased_random(p::T) where T<:AbstractFloat
-    control = rand(T)
-    outp = p > control ? true : false
-    return outp
+#caotious tft
+mutable struct n_cautious_TFT{T} <: depth_agent where {T<:AbstractFloat}
+    score::T
+    per_score::T
+    actions::Vector{Bool}
+    true_actions::Vector{Bool}
+    N_past::Int64
+    function n_cautious_TFT(T::Type = Float64, Npast = 1)
+        @assert Npast > 0
+        new{T}(zero(T),zero(T),[],[], Npast)
+    end
 end
 
-#p is the chance of corruption
-function state_corruption(state::Bool, p::T) where T<:AbstractFloat
-    control = rand(T)
-    output = p > control ? !state : state
-    return output
+# n-averager pavlov
+mutable struct n_averager_pavlov{T} <: depth_agent where {T<:AbstractFloat}
+    score::T
+    per_score::T
+    actions::Vector{Bool}
+    true_actions::Vector{Bool}
+    N_past::Int
+    function n_averager_pavlov(T::Type=Float64, N_past::Int=2)
+        new{T}(zero(T), zero(T), [], [], N_past)
+    end
 end
+
+
+
+
+
+
+
+
 
 strategy(agent::TFT, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin 
     if length(cagent.actions) >= 1
@@ -118,12 +140,71 @@ strategy(agent::TFT, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin
     end
 end
     
+
+
+strategy(agent::n_cautious_TFT, cagent::T, index::N) where {T<:PD_agent, N<:Integer} = begin
+    # Ensure there are at least `n` rounds of history to check
+    if index > agent.N_past
+        # Check if the last N actions of the opponent were cooperation (true)
+        for i in 1:agent.N_past
+            if cagent.actions[end-i+1] == false
+                return false  # If any action was a defection (false), defect
+            end
+        end
+        return true  # If all last N actions were cooperation, cooperate
+    else
+        # If less than N rounds have been played, default to cooperation
+        return true 
+    end
+end
+
+
+
+
 strategy(agent::random_picker, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = biased_random(agent.p)
 
 strategy(agent::pavlov, cagent::T, index::N) where {T<:PD_agent,N<:Integer} = begin 
     if length(cagent.actions) >= 1
-        @views return is_favourable(agent.true_actions[end],cagent.actions[end])
+        state = is_favourable(agent.true_actions[end],cagent.actions[end])
+        outcome = state ? agent.true_actions[end] : !agent.true_actions[end]
+        return outcome
     else
+        return true
+    end
+end
+
+
+
+function strategy(agent::n_averager_pavlov, cagent::T, index::N) where {T<:PD_agent,N<:Integer}
+
+    if length(agent.true_actions) >= agent.N_past
+        # Get the last n actions from both the agent and the opponent
+        @views agent_actions_window = agent.true_actions[end-agent.N_past+1]
+        @views cagent_actions_window = cagent.actions[end-agent.N_past+1]
+
+        # Check if the interaction history over the last n rounds was favorable
+        was_favorable = is_favourable.(agent_actions_window,cagent_actions_window)
+
+        overall_payoff = mean(was_favorable)
+        
+        avg_move_pavlov = round(Int64, mean(agent_actions_window))
+        
+        if overall_payoff > 0.5
+            return Bool(avg_move_pavlov)
+        else
+            return !Bool(avg_move_pavlov)
+        end
+
+            
+        if was_favorable
+            # If favorable, use the average action
+            return Bool(avg_action)
+        else
+            # If unfavorable, switch to the opposite action
+            return !Bool(avg_action)
+        end
+    else
+        # If there aren't enough actions to evaluate, cooperate by default
         return true
     end
 end
@@ -372,10 +453,10 @@ end
 function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq::T,to_cull::Z, payout::Dict, p_corrupt::Z, support_type::Type{<:Real}) where {T<:Integer, Z<:AbstractFloat}
 
     #this function also has the 'convinince' function of returning the history of the shape of the array.
-
+    
     shapos = Vector{Vector{Int64}}([ensemble_shape(ensemble)])
 
-    for i in ProgressBar(1:N_iters)
+    for i in 1:N_iters
         is_multiple = i % cull_freq == 0
         ensemble_round!(ensemble,Int64,N_turns,payout,p_corrupt)
 
@@ -414,26 +495,8 @@ function ensemble_resetter!(x)
     end
 end
 
-macro MC_mean!(N_runs, expression, model)
-    #model should be also inside the expression...
-    quote
-        res0 = $expression
-        dimensions = size(res0)
-        T = eltype(res0)
-        storage = Array{T}(undef,(N_runs, dimensions[1], dimensions[2]))
-        storage[1,:,:] = res0
-        ensemble_resetter!(model)
-
-        Threads.@threads for i in 2:N_runs
-            storage[i,:,:] = $expression
-            ensemble_resetter!(model)
-        end
-        means = mean(storage,dims = 1)
-        return means
-    end
-end
 
 
 export TFT, random_picker, pavlov, axelrod_payout, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores, delete_worst_performers!, r_repopulate_model!
-export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape, ensemble_resetter!, MC_mean!
+export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape, ensemble_resetter!, MC_mean, n_cautious_TFT, n_averager_pavlov
 end

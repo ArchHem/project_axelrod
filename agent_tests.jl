@@ -1,15 +1,18 @@
 include("./agent_based.jl")
 
-using Random, .AxelRod, Plots
+using Random, .AxelRod, Plots, Statistics
 
 
 all_defector = random_picker(0.0)
 titfortat = TFT()
+n_pavlov = n_averager_pavlov(Float64, 1)
 pavlov_agent = pavlov()
 
 const p_corruption = 0.0
 score1, score2 = clash_models!(all_defector,titfortat,p_corrupt = p_corruption, N_turns = 100)
-score3, score4 = clash_models!(titfortat,pavlov_agent,p_corrupt = p_corruption, N_turns = 100)
+score3, score4 = clash_models!(titfortat,n_pavlov,p_corrupt = p_corruption, N_turns = 100)
+
+score5, score6 = clash_models!(all_defector, n_pavlov, p_corrupt=p_corruption, N_turns = 100)
 
 #for p = 0.0
 # we expect the all-defector/TFT matchup to end up with 1 cooperation/defection followed by all-defection: I.e. the defector should have 5 points more, 
@@ -21,6 +24,9 @@ println(score2)
 
 println(score3)
 println(score4)
+
+println(score5)
+println(score6)
 
 #test ensemble struct 
 
@@ -101,4 +107,53 @@ for i in 2:N_p
 end
 
 display(x)
+
+
+#move this macro
+macro mc_avg(func_call,reruns)
+    
+    func = func_call.args[1]
+    args = func_call.args[2:end]
+
+    x = quote 
+        N = $reruns
+
+        res0 = $func($(map(arg -> :(deepcopy($arg)), args)...))
+        dims0 = size(res0)
+        T = eltype(res0)
+        
+        # Pre-allocate storage array for results
+        storage = zeros(T,(dims0...,N))
+        storage[:,:,1] = res0
+
+        
+
+        test = zeros(N)
+        
+        Threads.@threads :dynamic for i in 2:N
+            #THERE IS SOME UNKNOWN BEHAVIOUR HERE!!! direct usage of looping index does not reach certain elems
+            local j = i
+            local lres = $func($(map(arg -> :(deepcopy($arg)), args)...))
+            storage[:,:,j] = lres
+            test[j] = 1
+            
+
+        end
+        
+        results = mean(storage,dims = 3)
+        results = dropdims(results, dims = 3)
+    end
+    return x
+end
+
+model = plot_builder(deepcopy(TFTs), deepcopy(ADs))
+    
+
+res = @mc_avg(StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,0.1,dtype),100)
+    
+
+
+
+x = 1.0
+
 
