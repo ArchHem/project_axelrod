@@ -467,7 +467,7 @@ function StandardRun!(ensemble::AbstractEnsemble,N_turns::T,N_iters::T,cull_freq
             
             #get lowesr to_cull percentag
             #is this type stable?
-            cutoff = Int64(N_old*to_cull)
+            cutoff = round(Int64, N_old*to_cull)
             sort!(scores)
             min_score_local = scores[cutoff]
             delete_worst_performers!(ensemble,min_score_local)
