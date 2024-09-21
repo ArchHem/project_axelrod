@@ -496,7 +496,43 @@ function ensemble_resetter!(x)
 end
 
 
+macro mc_avg(func_call, reruns)
+    func = func_call.args[1]  
+    args = func_call.args[2:end]  
+
+    quote
+        let
+            N = $(esc(reruns))  
+            
+            
+            res0 = $(esc(func))($(map(arg -> :(deepcopy($(esc(arg)))), args)...))
+            dims0 = size(res0)
+            T = eltype(res0)
+            
+            
+            storage = zeros(T, (dims0..., N))
+            storage[:, :, 1] = res0
+
+            
+            test = zeros(N)
+            test[1] = 1
+           
+            Threads.@threads :dynamic for i in 2:N
+                local j = i  # Ensure thread-safe loop index
+                local lres = $(esc(func))($(map(arg -> :(deepcopy($(esc(arg)))), args)...))  # Deep copy args for each run
+                storage[:, :, j] = lres
+                test[j] = 1
+            end
+            
+            
+            results = mean(storage, dims=3)
+            results = dropdims(results, dims=3) 
+            results  
+        end
+    end
+end
+
 
 export TFT, random_picker, pavlov, axelrod_payout, clash_models!, EnsembleRepr, EnsembleBuilder, get_pers_scores, delete_worst_performers!, r_repopulate_model!
-export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape, ensemble_resetter!, MC_mean, n_cautious_TFT, n_averager_pavlov
+export ensemble_round!, StandardRun!, axelrod_payout, ensemble_shape, ensemble_resetter!, @mc_avg, n_cautious_TFT, n_averager_pavlov
 end

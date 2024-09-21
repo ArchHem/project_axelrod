@@ -109,47 +109,14 @@ end
 display(x)
 
 
-#move this macro
-macro mc_avg(func_call,reruns)
-    
-    func = func_call.args[1]
-    args = func_call.args[2:end]
+model_pre = EnsembleBuilder(:mixed,[TFT,pavlov,random_picker],[:TFT,:pavlov,:random],Float64)
+tft_vec = [TFT(Float64) for i in 1:200]
+pavlov_vec = [pavlov(Float64) for i in 1:300]
+random_vec = [random_picker(0.5) for i in 1:200]
 
-    x = quote 
-        N = $reruns
 
-        res0 = $func($(map(arg -> :(deepcopy($arg)), args)...))
-        dims0 = size(res0)
-        T = eltype(res0)
-        
-        # Pre-allocate storage array for results
-        storage = zeros(T,(dims0...,N))
-        storage[:,:,1] = res0
-
-        
-
-        test = zeros(N)
-        
-        Threads.@threads :dynamic for i in 2:N
-            #THERE IS SOME UNKNOWN BEHAVIOUR HERE!!! direct usage of looping index does not reach certain elems
-            local j = i
-            local lres = $func($(map(arg -> :(deepcopy($arg)), args)...))
-            storage[:,:,j] = lres
-            test[j] = 1
-            
-
-        end
-        
-        results = mean(storage,dims = 3)
-        results = dropdims(results, dims = 3)
-    end
-    return x
-end
-
-model = plot_builder(deepcopy(TFTs), deepcopy(ADs))
-    
-
-res = @mc_avg(StandardRun!(model,rounds,reruns,cull_freq,cull_amount,axelrod_payout,0.1,dtype),100)
+model = model_pre(tft_vec,pavlov_vec,random_vec)
+res = @mc_avg(StandardRun!(model,35,reruns,cull_freq,cull_amount,axelrod_payout,0.1,dtype),100)
     
 
 
