@@ -116,7 +116,7 @@ random_vec = [random_picker(0.0) for i in 1:1000]
 
 
 model = model_pre(tft_vec,pavlov_vec,random_vec)
-res = @mc_avg(StandardRun!(model,35,reruns,cull_freq,cull_amount,axelrod_payout,0.0,dtype),100)
+res = @mc_avg(StandardRun!(model,50,250,3,cull_amount,axelrod_payout,0.05,dtype),300)
     
 
 

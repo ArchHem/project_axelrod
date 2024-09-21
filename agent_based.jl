@@ -517,7 +517,7 @@ macro mc_avg(func_call, reruns)
             test = zeros(N)
             test[1] = 1
            
-            Threads.@threads :dynamic for i in 2:N
+            Threads.@threads :dynamic for i in ProgressBar(2:N)
                 local j = i  # Ensure thread-safe loop index
                 local lres = $(esc(func))($(map(arg -> :(deepcopy($(esc(arg)))), args)...))  # Deep copy args for each run
                 storage[:, :, j] = lres
