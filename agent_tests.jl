@@ -109,14 +109,15 @@ end
 display(x)
 
 
-model_pre = EnsembleBuilder(:mixed,[TFT,pavlov,random_picker],[:TFT,:pavlov,:random],Float64)
-tft_vec = [TFT(Float64) for i in 1:200]
-pavlov_vec = [pavlov(Float64) for i in 1:200]
-random_vec = [random_picker(0.0) for i in 1:1000]
+model_pre = EnsembleBuilder(:mixed,[TFT,pavlov,random_picker,random_picker],[:TFT,:pavlov,:AD,:AC],Float64)
+tft_vec = [TFT(Float64) for i in 1:100]
+pavlov_vec = [pavlov(Float64) for i in 1:100]
+AD_vec = [random_picker(0.0) for i in 1:100]
+AC_vec = [random_picker(1.0) for i in 1:100]
 
 
-model = model_pre(tft_vec,pavlov_vec,random_vec)
-res = @mc_avg(StandardRun!(model,50,250,3,cull_amount,axelrod_payout,0.05,dtype),300)
+model = model_pre(tft_vec,pavlov_vec,AD_vec, AC_vec)
+res = @mc_avg(StandardRun!(model,50,500,5,cull_amount,axelrod_payout,0.01,dtype),400)
     
 
 
